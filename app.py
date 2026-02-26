@@ -1,19 +1,20 @@
-## 박수연의 한국 복지패널 대시보드 스트림릿 실행 코드
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
+import os
 
 # 1. 웹 페이지 설정 및 로고 로드
-# 로고 이미지 경로가 정확한지 확인하세요.
-logo_path = r"D:\Steamlit\logo.png"
+logo_path = "logo.png"
 try:
-    img = Image.open(logo_path)
+    if os.path.exists(logo_path):
+        img = Image.open(logo_path)
+    else:
+        img = None
 except Exception:
-    img = None # 이미지 파일이 없을 경우를 대비한 예외 처리
+    img = None 
 
 st.set_page_config(
     layout="wide", 
@@ -29,14 +30,18 @@ with st.sidebar:
     st.title("박수연의 한국 복지패널 대시보드")
     st.markdown("---")
 
-# 한글 폰트 지정
+# 한글 폰트 지정 (배포 환경에서는 NanumGothic 등이 필요할 수 있으나 기본 설정 유지)
 plt.rc("font", family="Malgun Gothic")
 plt.rcParams["axes.unicode_minus"] = False
 
+# 메인 섹션
+st.title("박수연의 한국복지패널 대시보드")
+st.markdown("데이터 출처: 복지패널 데이터")
 
 # 데이터 로드 함수
 @st.cache_data
 def load_welfare(sav_path: str):
+    # 로컬 경로가 아닌 입력받은 상대 경로로 읽어옵니다.
     raw_welfare = pd.read_csv(sav_path)
     welfare = raw_welfare.copy()
     welfare = welfare.rename(
@@ -77,12 +82,14 @@ def load_welfare(sav_path: str):
 
     if "job_code" in welfare.columns:
         welfare["job_code"] = np.where(welfare["job_code"] == 9999, np.nan, welfare["job_code"])
-        # 직종 코드북 경로 확인 필요
+        # 배포 환경을 위해 상대 경로인 "welfare_2015_codebook.xlsx"로 수정했습니다.
         try:
-            job_list = pd.read_excel("D:/Steamlit/welfare_2015_codebook.xlsx", sheet_name="직종코드")
-            welfare = welfare.merge(job_list, how="left", on="job_code")
-        except:
-            pass
+            codebook_path = "welfare_2015_codebook.xlsx"
+            if os.path.exists(codebook_path):
+                job_list = pd.read_excel(codebook_path, sheet_name="직종코드")
+                welfare = welfare.merge(job_list, how="left", on="job_code")
+        except Exception as e:
+            st.warning(f"직업 코드북을 불러올 수 없습니다: {e}")
 
     if "religion" in welfare.columns:
         welfare['religion'] = np.where(welfare['religion'] == 9, np.nan, welfare['religion'])
@@ -107,20 +114,21 @@ def load_welfare(sav_path: str):
 
 # 3. 사이드바 컨트롤
 st.sidebar.header("📂 데이터 로드")
-data_path = st.sidebar.text_input("데이터 파일 경로", value="D:/Steamlit/welfare_2015.csv")
+# 기본값을 파일명만 적도록 "welfare_2015.csv"로 수정했습니다.
+data_path = st.sidebar.text_input("데이터 파일 경로", value="welfare_2015.csv")
 
 if st.sidebar.button("데이터 새로고침"):
     st.cache_data.clear()
     st.rerun()
 
-# 메인 섹션
-st.title("한국복지패널 대시보드")
-st.markdown("데이터 출처: 복지패널 데이터")
-
 # 데이터 로드 시도
 try:
-    welfare = load_welfare(data_path)
-    st.success(f"데이터 로드 완료: {welfare.shape[0]}행 {welfare.shape[1]}열")
+    if os.path.exists(data_path):
+        welfare = load_welfare(data_path)
+        st.success(f"데이터 로드 완료: {welfare.shape[0]}행 {welfare.shape[1]}열")
+    else:
+        st.error(f"파일을 찾을 수 없습니다: {data_path}. 리포지토리에 파일이 있는지 확인하세요.")
+        st.stop()
 except Exception as e:
     st.error(f"데이터 로드 실패: {e}")
     st.stop()
@@ -270,7 +278,6 @@ with col2:
     else:
         st.write("변수 없음")
 
-# 나머지 주제는 여러분들이 직접 만들어 보아요!
 # 연령대에 따른 월급 차이 - 어떤 연령대의 월급이 가장 많을까?
 st.subheader("3. 연령대에 따른 월급 차이 - 어떤 연령대의 월급이 가장 많을까?")
 
@@ -614,5 +621,3 @@ with col2:
         st.write(pivot_region_age_group.sort_values('old', ascending = False)[['young', 'middle', 'old']])
     else:
         st.write("변수 없음")
-
-# 끝

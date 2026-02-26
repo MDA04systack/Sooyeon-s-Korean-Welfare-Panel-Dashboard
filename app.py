@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
 import os
+import platform
 
 # 1. 웹 페이지 설정 및 로고 로드
 logo_path = "logo.png"
@@ -30,8 +31,15 @@ with st.sidebar:
     st.title("박수연의 한국 복지패널 대시보드")
     st.markdown("---")
 
-# 한글 폰트 지정 (배포 환경에서는 NanumGothic 등이 필요할 수 있으나 기본 설정 유지)
-plt.rc("font", family="Malgun Gothic")
+# 한글 폰트 지정
+if platform.system() == 'Windows':
+    # 로컬 윈도우 환경 (맑은 고딕)
+    plt.rc("font", family="Malgun Gothic")
+else:
+    # 스트림릿 클라우드/리눅스 환경 (나눔 고딕)
+    plt.rc("font", family="NanumGothic")
+
+# 마이너스 기호 깨짐 방지
 plt.rcParams["axes.unicode_minus"] = False
 
 # 메인 섹션
